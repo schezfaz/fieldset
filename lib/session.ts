@@ -1,7 +1,6 @@
 "use client";
 
-// Per-browser respondent id, shared by the fill and interview pages so
-// oneResponsePerPerson dedup works across both response modes.
+// Per-browser respondent id, used so oneResponsePerPerson dedup works.
 export function getSessionId(): string {
   if (typeof window === "undefined") return "";
   try {

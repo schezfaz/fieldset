@@ -37,7 +37,6 @@ export const ELEMENTS: ElementDef[] = [
   { kind: "single_choice",  label: "Single choice",glyph: "◉", group: "Choices", hasOptions: true, defaults: () => ({ label: "Pick one", options: ["Option 1", "Option 2", "Option 3"] }) },
   { kind: "multi_choice",   label: "Checkboxes",   glyph: "☑", group: "Choices", hasOptions: true, defaults: () => ({ label: "Select all that apply", options: ["Option 1", "Option 2", "Option 3"] }) },
   { kind: "dropdown",       label: "Dropdown",     glyph: "▾", group: "Choices", hasOptions: true, defaults: () => ({ label: "Choose one", options: ["Option 1", "Option 2", "Option 3"] }) },
-  { kind: "multi_dropdown", label: "Multi-select", glyph: "⊟", group: "Choices", hasOptions: true, defaults: () => ({ label: "Choose several", options: ["Option 1", "Option 2", "Option 3"] }) },
   { kind: "yes_no",         label: "Yes / No",     glyph: "⇄", group: "Choices", defaults: () => ({ label: "Yes or no?" }) },
   { kind: "ranking",        label: "Ranking",      glyph: "⇅", group: "Choices", hasOptions: true, defaults: () => ({ label: "Drag to rank", options: ["Option 1", "Option 2", "Option 3"] }) },
 
@@ -66,7 +65,6 @@ export const ELEMENTS: ElementDef[] = [
   { kind: "page_break",     label: "Page break",   glyph: "⎯", group: "Layout & logic", display: true, defaults: () => ({ label: "Page break" }) },
   { kind: "consent",        label: "Consent",      glyph: "✓", group: "Layout & logic", defaults: () => ({ label: "I agree to the terms and conditions." }) },
   { kind: "hidden",         label: "Hidden field", glyph: "∅", group: "Layout & logic", display: true, defaults: () => ({ label: "utm_source" }) },
-  { kind: "payment",        label: "Payment",      glyph: "⊕", group: "Layout & logic", display: true, defaults: () => ({ label: "Amount due", price: 10 }) },
 ];
 
 export const elementByKind = (k: QuestionKind) => ELEMENTS.find((e) => e.kind === k);

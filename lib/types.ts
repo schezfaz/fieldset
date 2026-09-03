@@ -5,24 +5,23 @@
 export type QuestionKind =
   | "short_text" | "long_text" | "email" | "number"
   | "url" | "phone" | "currency" | "rich_text"
-  | "single_choice" | "multi_choice" | "dropdown" | "multi_dropdown"
+  | "single_choice" | "multi_choice" | "dropdown"
   | "yes_no" | "ranking"
   | "rating" | "slider" | "opinion_scale" | "nps" | "matrix"
   | "date" | "time"
   | "address" | "file" | "signature" | "color" | "image" | "video"
-  | "section" | "statement" | "page_break" | "consent" | "hidden" | "payment";
+  | "section" | "statement" | "page_break" | "consent" | "hidden";
 
 export interface Question {
   questionId: string;
   kind: QuestionKind;
   label: string;
   required: boolean;
-  options?: string[];   // single_choice | multi_choice | dropdown | multi_dropdown | ranking | matrix (columns)
+  options?: string[];   // single_choice | multi_choice | dropdown | ranking | matrix (columns)
   rows?: string[];      // matrix (row labels)
   min?: number;         // number | rating | slider | opinion_scale | nps | currency
   max?: number;
   step?: number;        // slider
-  price?: number;       // payment | optional unit price per option
 }
 
 export interface FormSettings {
@@ -54,21 +53,6 @@ export interface FormResponse {
   answers: Answer[];
   submittedAt: string;
   sessionId?: string;
-}
-
-// One turn of an interview-style fill: a question the agent (or the human, via the
-// manual "ask" control) decided to ask, added live while filling rather than up front.
-// Kept only on the response (not written back onto the form) — see HANDOFF.md §6.
-export interface InterviewTurn {
-  questionId: string;
-  kind: QuestionKind;
-  label: string;
-  required: boolean;
-  options?: string[];
-  min?: number;
-  max?: number;
-  answer?: AnswerValue;
-  askedBy: "agent" | "human";
 }
 
 // A conclusion drawn from the responses and posted onto the results page.

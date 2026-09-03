@@ -28,7 +28,7 @@ export function aggregate(form: Form, responses: FormResponse[]): Aggregate {
       .map((r) => r.answers.find((a) => a.questionId === q.questionId)?.value)
       .filter((v) => v !== undefined && v !== "");
 
-    if (["single_choice", "dropdown", "yes_no", "multi_choice", "multi_dropdown", "ranking", "matrix", "consent"].includes(q.kind)) {
+    if (["single_choice", "dropdown", "yes_no", "multi_choice", "ranking", "matrix", "consent"].includes(q.kind)) {
       const counts: Record<string, number> = {};
       for (const v of values) {
         const arr = Array.isArray(v) ? v : [v];

@@ -89,7 +89,7 @@ export async function patchForm(
 
 export async function addQuestion(id: string, q: {
   kind: QuestionKind; label: string; required?: boolean; options?: string[]; rows?: string[];
-  min?: number; max?: number; step?: number; price?: number;
+  min?: number; max?: number; step?: number;
 }): Promise<Question | undefined> {
   const f = await getForm(id);
   if (!f) return undefined;
@@ -103,7 +103,6 @@ export async function addQuestion(id: string, q: {
     min: q.min,
     max: q.max,
     step: q.step,
-    price: q.price,
   };
   f.questions.push(question);
   await saveForm(f);

@@ -56,7 +56,7 @@ export default function BuilderPage({ params }: { params: Promise<{ id: string }
       name: "add_question",
       description:
         "Add one question to the form. kind is one of: " + KIND_ENUM.join(", ") +
-        ". Provide options[] for single_choice, multi_choice, dropdown, multi_dropdown, ranking, and matrix (columns); rows[] for matrix. Use min/max for rating, slider, opinion_scale, nps, currency (and step for slider). Use kind 'section'/'statement'/'page_break'/'image'/'video'/'hidden' for non-answerable layout elements (for image/video pass the source URL as options[0]); price for payment. Returns the new questionId.",
+        ". Provide options[] for single_choice, multi_choice, dropdown, ranking, and matrix (columns); rows[] for matrix. Use min/max for rating, slider, opinion_scale, nps, currency (and step for slider). Use kind 'section'/'statement'/'page_break'/'image'/'video'/'hidden' for non-answerable layout elements (for image/video pass the source URL as options[0]). Returns the new questionId.",
       inputSchema: {
         type: "object",
         properties: {
@@ -65,7 +65,7 @@ export default function BuilderPage({ params }: { params: Promise<{ id: string }
           required: { type: "boolean" },
           options: { type: "array", items: { type: "string" }, description: "Choices for choice/dropdown kinds; matrix columns; media URL as options[0]" },
           rows: { type: "array", items: { type: "string" }, description: "Row labels for matrix" },
-          min: { type: "number" }, max: { type: "number" }, step: { type: "number" }, price: { type: "number" },
+          min: { type: "number" }, max: { type: "number" }, step: { type: "number" },
         },
         required: ["kind", "label"],
       },
@@ -205,10 +205,7 @@ export default function BuilderPage({ params }: { params: Promise<{ id: string }
         <div className="b-header-right">
           <span className={`status-pill ${form.status}`}>{form.status}</span>
           {form.status === "published" && form.shareUrl && (
-            <>
-              <Link href={`/f/${id}`} className="btn btn-ghost" target="_blank">Open fill page ↗</Link>
-              <Link href={`/i/${id}`} className="btn btn-ghost" target="_blank">Interview mode ↗</Link>
-            </>
+            <Link href={`/f/${id}`} className="btn btn-ghost" target="_blank">Open fill page ↗</Link>
           )}
           <Link href={`/r/${id}`} className="btn btn-ghost">Responses →</Link>
           <button className="btn btn-hl" onClick={publish}>Publish</button>
@@ -406,6 +403,10 @@ function QuestionConfig({
 }) {
   const isSection = q.kind === "section";
   const isMedia = q.kind === "image" || q.kind === "video";
+  // Choice-bearing kinds render their options as directly-editable rows (OptionsEditor,
+  // and for matrix the rows editor too) — that already *is* the live control, so a
+  // second disabled preview underneath would just repeat the same list.
+  const skipPreview = isSection || def?.hasOptions;
 
   return (
     <>
@@ -426,8 +427,23 @@ function QuestionConfig({
             <input
               className="input"
               value={q.options?.[0] ?? ""}
-              placeholder="https://…"
+              placeholder="https://… or upload a file"
               onChange={(e) => onPatch({ options: [e.target.value] })}
+            />
+          </label>
+          <label className="btn btn-ghost" style={{ cursor: "pointer" }}>
+            Upload…
+            <input
+              type="file"
+              accept={q.kind === "image" ? "image/*" : "video/*"}
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                const reader = new FileReader();
+                reader.onload = () => onPatch({ options: [String(reader.result ?? "")] });
+                reader.readAsDataURL(f);
+              }}
             />
           </label>
         </div>
@@ -448,12 +464,10 @@ function QuestionConfig({
       {q.kind === "currency" && (
         <RangeEditor q={q} onPatch={onPatch} fields={["min", "max"]} labels={{ min: "Min", max: "Max" }} />
       )}
-      {q.kind === "payment" && (
-        <RangeEditor q={q} onPatch={onPatch} fields={["price"]} labels={{ price: "Amount ($)" }} />
-      )}
 
-      {/* live preview — everything except a bare section header */}
-      {!isSection && (
+      {/* live preview — skipped for section headers and choice-bearing kinds, whose
+          editable rows above already are the live control (no redundant second list) */}
+      {!skipPreview && (
         <div className="q-preview">
           <FieldControl q={q} value={undefined} onChange={() => {}} disabled />
         </div>
@@ -468,8 +482,8 @@ function RangeEditor({
 }: {
   q: Question;
   onPatch: (p: Partial<Question>) => void;
-  fields: ("min" | "max" | "step" | "price")[];
-  labels?: Partial<Record<"min" | "max" | "step" | "price", string>>;
+  fields: ("min" | "max" | "step")[];
+  labels?: Partial<Record<"min" | "max" | "step", string>>;
 }) {
   const cap = (f: string) => f.charAt(0).toUpperCase() + f.slice(1);
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { AnswerValue, Question } from "@/lib/types";
 
 // Renders one question as a real interactive control. Used on the fill page (and as a
@@ -59,6 +59,7 @@ export function FieldControl({
         <input
           className={`input ${hl}`}
           type="number"
+          inputMode="decimal"
           value={value === undefined ? "" : String(value)}
           min={q.min}
           max={q.max}
@@ -75,6 +76,7 @@ export function FieldControl({
           <input
             className="input"
             type="number"
+            inputMode="decimal"
             value={value === undefined ? "" : String(value)}
             min={q.min ?? 0}
             max={q.max}
@@ -129,22 +131,6 @@ export function FieldControl({
         </select>
       );
 
-    case "multi_dropdown": {
-      const arr = Array.isArray(value) ? (value as string[]) : [];
-      return (
-        <select
-          multiple
-          className={`select select-multi ${hl}`}
-          value={arr}
-          disabled={disabled}
-          onChange={(e) => onChange(Array.from(e.target.selectedOptions, (o) => o.value))}
-          style={{ maxWidth: 320 }}
-        >
-          {(q.options ?? []).map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-        </select>
-      );
-    }
-
     case "ranking": {
       // Keep every option present, in the responder's chosen order (defaults to the given order).
       const opts = q.options ?? [];
@@ -156,10 +142,25 @@ export function FieldControl({
         [next[i], next[j]] = [next[j], next[i]];
         onChange(next);
       };
+      const reorder = (from: number, to: number) => {
+        if (from === to || Number.isNaN(from)) return;
+        const next = arr.slice();
+        const [moved] = next.splice(from, 1);
+        next.splice(to, 0, moved);
+        onChange(next);
+      };
       return (
         <ol className={`rank-list ${hl}`}>
           {arr.map((opt, i) => (
-            <li key={opt} className="rank-row">
+            <li
+              key={opt}
+              className="rank-row"
+              draggable={!disabled}
+              onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(i)); }}
+              onDragOver={(e) => { if (!disabled) e.preventDefault(); }}
+              onDrop={(e) => { e.preventDefault(); if (!disabled) reorder(Number(e.dataTransfer.getData("text/plain")), i); }}
+            >
+              <span className="rank-grip mono" aria-hidden>⠿</span>
               <span className="rank-num mono">{i + 1}</span>
               <span className="rank-label">{opt}</span>
               <span className="rank-actions">
@@ -292,18 +293,7 @@ export function FieldControl({
       );
 
     case "file":
-      return (
-        <label className={`file-drop ${hl}`}>
-          <input
-            type="file"
-            disabled={disabled}
-            onChange={(e) => onChange(e.target.files?.[0]?.name ?? "")}
-            style={{ display: "none" }}
-          />
-          <span className="file-glyph">⇪</span>
-          <span>{typeof value === "string" && value ? value : "Choose a file…"}</span>
-        </label>
-      );
+      return <FileUpload hl={hl} value={value as string | undefined} onChange={onChange} disabled={disabled} />;
 
     case "signature":
       return <SignaturePad hl={hl} value={value as string | undefined} onChange={onChange} disabled={disabled} />;
@@ -343,22 +333,34 @@ export function FieldControl({
         ? <p className="hidden-note mono">∅ hidden — “{q.label}”, not shown to responders</p>
         : null;
 
-    case "payment": {
-      const amt = q.price ?? 0;
-      return (
-        <div className={`payment ${hl}`}>
-          <span className="payment-amt mono">${amt.toFixed(2)}</span>
-          <button type="button" className="btn" disabled>Pay now</button>
-        </div>
-      );
-    }
-
     default:
       return null;
   }
 }
 
 // Lightweight canvas signature — stores a data-URL string as the answer.
+// Reads the chosen file into a data URL (same approach the signature pad already uses)
+// so the answer actually carries the file's bytes, not just its name.
+function FileUpload({
+  hl, value, onChange, disabled,
+}: { hl: string; value: string | undefined; onChange: (v: AnswerValue) => void; disabled?: boolean }) {
+  const [name, setName] = useState("");
+  const handle = (f: File | undefined) => {
+    if (!f) return;
+    setName(f.name);
+    const reader = new FileReader();
+    reader.onload = () => onChange(String(reader.result ?? ""));
+    reader.readAsDataURL(f);
+  };
+  return (
+    <label className={`file-drop ${hl}`}>
+      <input type="file" disabled={disabled} onChange={(e) => handle(e.target.files?.[0])} style={{ display: "none" }} />
+      <span className="file-glyph">⇪</span>
+      <span>{name || (value ? "File uploaded" : "Choose a file…")}</span>
+    </label>
+  );
+}
+
 function SignaturePad({
   hl, value, onChange, disabled,
 }: { hl: string; value: string | undefined; onChange: (v: AnswerValue) => void; disabled?: boolean }) {

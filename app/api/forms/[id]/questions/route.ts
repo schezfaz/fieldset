@@ -15,10 +15,10 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     label: typeof b.label === "string" ? b.label : "Untitled question",
     required: !!b.required,
     options: Array.isArray(b.options) ? b.options.map(String) : undefined,
+    rows: Array.isArray(b.rows) ? b.rows.map(String) : undefined,
     min: typeof b.min === "number" ? b.min : undefined,
     max: typeof b.max === "number" ? b.max : undefined,
     step: typeof b.step === "number" ? b.step : undefined,
-    price: typeof b.price === "number" ? b.price : undefined,
   });
   if (!q) return NextResponse.json({ ok: false, error: { code: "not_found", message: "No such form" } }, { status: 404 });
   return NextResponse.json({ ok: true, questionId: q.questionId, form: await getForm(id) });

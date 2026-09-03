@@ -9,6 +9,7 @@ import { FieldControl } from "@/components/FieldControl";
 import { BrandMark } from "@/components/BrandMark";
 import { confirmGate, useWebMCP, webmcpAvailable } from "@/lib/webmcp";
 import { getSessionId } from "@/lib/session";
+import { invalidReason } from "@/lib/validate";
 
 type Answers = Record<string, AnswerValue>;
 
@@ -47,12 +48,18 @@ export default function FillPage({ params }: { params: Promise<{ id: string }> }
   };
 
   function validation(f: Form, a: Answers) {
-    const missing = f.questions
-      .filter((q) => q.required && !elementByKind(q.kind)?.display)
-      .filter((q) => { const v = a[q.questionId]; return v === undefined || v === "" || (Array.isArray(v) && v.length === 0); })
-      .map((q) => q.questionId);
+    const missing: string[] = [];
+    const invalid: { questionId: string; reason: string }[] = [];
+    for (const q of f.questions) {
+      if (elementByKind(q.kind)?.display) continue;
+      const v = a[q.questionId];
+      const empty = v === undefined || v === "" || (Array.isArray(v) && v.length === 0);
+      if (empty) { if (q.required) missing.push(q.questionId); continue; }
+      const reason = invalidReason(q, v);
+      if (reason) invalid.push({ questionId: q.questionId, reason });
+    }
     if (f.settings.collectName && !nameRef.current.trim()) missing.push("name");
-    return { valid: missing.length === 0, missing };
+    return { valid: missing.length === 0 && invalid.length === 0, missing, invalid };
   }
 
   async function doSubmit(): Promise<{ ok: boolean; error?: string }> {
@@ -134,7 +141,13 @@ export default function FillPage({ params }: { params: Promise<{ id: string }> }
         const f = formRef.current;
         if (!f) return { ok: false, error: "not loaded" };
         const v = validation(f, answersRef.current);
-        if (!v.valid) return { ok: false, error: { code: "incomplete", message: `Missing: ${v.missing.join(", ")}` } };
+        if (!v.valid) {
+          const parts = [
+            v.missing.length ? `missing: ${v.missing.join(", ")}` : "",
+            v.invalid.length ? `invalid: ${v.invalid.map((x) => `${x.questionId} (${x.reason})`).join(", ")}` : "",
+          ].filter(Boolean);
+          return { ok: false, error: { code: "incomplete", message: parts.join("; ") } };
+        }
         const ok = await confirmGate(client, `Submit your response to "${f.title}"?`);
         if (!ok) return { ok: false, error: "cancelled by user" };
         const res = await doSubmit();
@@ -196,6 +209,7 @@ export default function FillPage({ params }: { params: Promise<{ id: string }> }
               <FieldControl q={q} value={answers[q.questionId]} onChange={(val) => setAnswer(q.questionId, val, false)} agentTouched={agentIds.has(q.questionId)} />
             </div>;
           }
+          const badReason = v.invalid.find((x) => x.questionId === q.questionId)?.reason;
           return (
             <div key={q.questionId} className="q-block">
               <label className="q-ask">
@@ -204,6 +218,7 @@ export default function FillPage({ params }: { params: Promise<{ id: string }> }
                 <span className="q-kind-tag mono">{def?.label}</span>
               </label>
               <FieldControl q={q} value={answers[q.questionId]} onChange={(val) => setAnswer(q.questionId, val, false)} agentTouched={agentIds.has(q.questionId)} />
+              {badReason && <p className="field-error">{badReason}</p>}
             </div>
           );
         })}
@@ -212,7 +227,14 @@ export default function FillPage({ params }: { params: Promise<{ id: string }> }
           <button className="btn btn-hl" disabled={!v.valid} onClick={async () => { const r = await doSubmit(); if (!r.ok) alert(r.error); }}>
             Submit response
           </button>
-          {!v.valid && <span className="muted tiny">{v.missing.length} required field(s) left</span>}
+          {!v.valid && (
+            <span className="muted tiny">
+              {[
+                v.missing.length ? `${v.missing.length} required field(s) left` : "",
+                v.invalid.length ? `${v.invalid.length} field(s) need fixing` : "",
+              ].filter(Boolean).join(" · ")}
+            </span>
+          )}
         </div>
       </main>
     </div>
