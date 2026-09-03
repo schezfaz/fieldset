@@ -4,12 +4,10 @@
 
 # **Fieldset**
 
-### Agent-native forms, built on WebMCP
+### Agent-native forms, built using WebMCP
 
 Forms you and your AI agent **build, fill, and analyze together** — same page, same controls,
 with everything the agent touches highlighted, so you always see who did what.
-
-**Built using WebMCP.**
 
 [![WebMCP](https://img.shields.io/badge/WebMCP-enabled-4E8DA3)](https://webmcp.devpost.com/)
 [![MCP tools](https://img.shields.io/badge/MCP_tools-18-4E8DA3)](#how-webmcp-is-implemented)
