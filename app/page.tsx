@@ -105,7 +105,7 @@ export default function Home() {
 
         <p className="eyebrow">Agent-native forms</p>
         <h1 className="home-h1">
-          Forms you and your agent <mark className="mark-hl">build</mark> and <mark className="mark-hl">fill</mark> together.
+          forms you and your agent <mark className="mark-hl">build</mark> and <mark className="mark-hl">fill</mark> together.
         </h1>
         <p className="home-sub">
           Start here, or hand it off to your agent — with shared controls, you both work on the

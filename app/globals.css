@@ -227,7 +227,7 @@ input.input.agent-touched, textarea.textarea.agent-touched, select.select.agent-
    no background fill) */
 
 /* --- brand ----------------------------------------------------------------- */
-.brand { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 700; font-size: 20px; color: var(--ink); text-decoration: none; letter-spacing: -0.02em; }
+.brand { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 700; font-size: 20px; color: var(--ink); text-decoration: none; letter-spacing: -0.02em; text-transform: uppercase; }
 .brand.sm { font-size: 17px; }
 .brand-mark { color: var(--hl-deep); font-size: 0.9em; flex-shrink: 0; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--faint); margin-right: 6px; vertical-align: middle; }
