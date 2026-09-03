@@ -1,69 +1,139 @@
-import Image from "next/image";
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
+import { KIND_ENUM } from "@/lib/elements";
+import { useWebMCP, webmcpAvailable } from "@/lib/webmcp";
+
+type BuildQuestion = {
+  kind: string; label: string; required?: boolean; options?: string[]; min?: number; max?: number; step?: number;
+};
 
 export default function Home() {
+  const router = useRouter();
+  const [title, setTitle] = useState("");
+  const [mcp, setMcp] = useState(false);
+
+  useEffect(() => setMcp(webmcpAvailable()), []);
+
+  async function create(t: string) {
+    const res = await api.createForm({ title: t || "Untitled form" });
+    if (res.ok && res.formId) router.push(`/edit/${res.formId}`);
+    return res;
+  }
+
+  // One-shot: create the form AND add every question in a single tool call, then open the
+  // builder. Avoids the home→builder tool-rediscovery handoff — the agent does it all here.
+  async function buildForm(input: { title: string; description?: string; questions?: BuildQuestion[] }) {
+    const res = await api.createForm({ title: input.title || "Untitled form", description: input.description });
+    if (!res.ok || !res.formId) return { ok: false, error: "Could not create form" };
+    const id = res.formId;
+    let added = 0;
+    for (const q of input.questions ?? []) {
+      const r = await api.addQuestion(id, q as Record<string, unknown>);
+      if (r.ok) added++;
+    }
+    router.push(`/edit/${id}?built=1`);
+    return {
+      ok: true, formId: id, editUrl: `/edit/${id}`, added,
+      next: added ? "Form built. Review it and call publish_form on the builder to share." : "No questions added — use add_question on the builder.",
+    };
+  }
+
+  useWebMCP(() => [
+    {
+      name: "build_form",
+      description:
+        "Build a COMPLETE form in one call from a goal (e.g. 'a form to collect feedback on my presentation'): creates the form, sets the title, and adds every question at once. Prefer this over create_form whenever you already know what to ask. kinds: " +
+        KIND_ENUM.join(", ") +
+        ". Give options[] for single_choice/multi_choice/dropdown, min/max (and step) for rating/slider, and use kind 'section' for a header.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "The form title" },
+          description: { type: "string", description: "Optional subtitle shown to respondents" },
+          questions: {
+            type: "array",
+            description: "Every question to add, in order",
+            items: {
+              type: "object",
+              properties: {
+                kind: { type: "string", enum: KIND_ENUM },
+                label: { type: "string", description: "The question text" },
+                required: { type: "boolean" },
+                options: { type: "array", items: { type: "string" } },
+                min: { type: "number" }, max: { type: "number" }, step: { type: "number" },
+              },
+              required: ["kind", "label"],
+            },
+          },
+        },
+        required: ["title", "questions"],
+      },
+      execute: async (input) =>
+        buildForm(input as { title: string; description?: string; questions?: BuildQuestion[] }),
+    },
+    {
+      name: "create_form",
+      description:
+        "Create a new form and open its builder. Use this first, then add questions with add_question on the builder page.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "The form's title" },
+          description: { type: "string", description: "Optional subtitle shown to respondents" },
+        },
+        required: ["title"],
+      },
+      execute: async (input) => {
+        const res = await create(String(input.title ?? "Untitled form"));
+        return res.ok
+          ? { ok: true, formId: res.formId, editUrl: `/edit/${res.formId}`, next: "Now add questions with add_question." }
+          : { ok: false, error: "Could not create form" };
+      },
+    },
+  ]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="home">
+      <div className="home-inner">
+        <div className="brand">
+          <span className="brand-mark">▨</span> Fieldset
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <p className="eyebrow">Agent-native forms</p>
+        <h1 className="home-h1">
+          Forms you and your agent <mark className="mark-hl">build</mark> and <mark className="mark-hl">fill</mark> together.
+        </h1>
+        <p className="home-sub">
+          Start here, or hand it off to your agent — with shared controls, you both work on the
+          same canvas. Everything the agent touches is{" "}
+          <span className="ink-hl">highlighted</span>, so you always see who did what. Share the link,
+          with another human — or agent!
+        </p>
+
+        <div className="card home-card">
+          <label className="field-label">Form title</label>
+          <input
+            className="input"
+            placeholder="e.g. Team lunch order, Q3 customer survey…"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && create(title)}
+          />
+          <button className="btn btn-primary home-cta" style={{ marginTop: 16 }} onClick={() => create(title)}>
+            Create form →
+          </button>
         </div>
-      </main>
-    </div>
+
+        <p className="mcp-status">
+          <span className={`dot ${mcp ? "on" : ""}`} />
+          {mcp
+            ? "WebMCP detected — your agent can build right alongside you."
+            : "WebMCP not detected — you can still build manually. Enable chrome://flags/#enable-webmcp-testing to build with your agent."}
+        </p>
+      </div>
+    </main>
   );
 }

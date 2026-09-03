@@ -1,0 +1,41 @@
+import { NextRequest, NextResponse } from "next/server";
+import { addQuestion, getForm, removeQuestion, updateQuestion } from "@/lib/store";
+import { KIND_ENUM } from "@/lib/elements";
+
+type Ctx = { params: Promise<{ id: string }> };
+
+export async function POST(req: NextRequest, { params }: Ctx) {
+  const { id } = await params;
+  const b = await req.json().catch(() => ({}));
+  if (!KIND_ENUM.includes(b.kind)) {
+    return NextResponse.json({ ok: false, error: { code: "bad_kind", message: `kind must be one of ${KIND_ENUM.join(", ")}` } }, { status: 400 });
+  }
+  const q = addQuestion(id, {
+    kind: b.kind,
+    label: typeof b.label === "string" ? b.label : "Untitled question",
+    required: !!b.required,
+    options: Array.isArray(b.options) ? b.options.map(String) : undefined,
+    min: typeof b.min === "number" ? b.min : undefined,
+    max: typeof b.max === "number" ? b.max : undefined,
+    step: typeof b.step === "number" ? b.step : undefined,
+    price: typeof b.price === "number" ? b.price : undefined,
+  });
+  if (!q) return NextResponse.json({ ok: false, error: { code: "not_found", message: "No such form" } }, { status: 404 });
+  return NextResponse.json({ ok: true, questionId: q.questionId, form: getForm(id) });
+}
+
+export async function PATCH(req: NextRequest, { params }: Ctx) {
+  const { id } = await params;
+  const { questionId, patch } = await req.json().catch(() => ({}));
+  const q = updateQuestion(id, questionId, patch ?? {});
+  if (!q) return NextResponse.json({ ok: false, error: { code: "not_found", message: "No such question" } }, { status: 404 });
+  return NextResponse.json({ ok: true, form: getForm(id) });
+}
+
+export async function DELETE(req: NextRequest, { params }: Ctx) {
+  const { id } = await params;
+  const { questionId } = await req.json().catch(() => ({}));
+  const ok = removeQuestion(id, questionId);
+  if (!ok) return NextResponse.json({ ok: false, error: { code: "not_found", message: "No such question" } }, { status: 404 });
+  return NextResponse.json({ ok: true, form: getForm(id) });
+}
