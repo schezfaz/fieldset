@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { KIND_ENUM } from "@/lib/elements";
-import { confirmGate, useWebMCP, webmcpAvailable } from "@/lib/webmcp";
+import { useWebMCP, webmcpAvailable } from "@/lib/webmcp";
 import { BrandMark } from "@/components/BrandMark";
 import { SITE_SAMPLES, type Sample } from "@/lib/samples";
 
@@ -40,7 +40,8 @@ export default function Home() {
 
   // One-shot: create the form AND add every question in a single tool call, then open the
   // builder. Avoids the home→builder tool-rediscovery handoff — the agent does it all here.
-  async function buildForm(input: { title: string; description?: string; questions?: BuildQuestion[] }, client?: unknown) {
+  // Publishing is left to the user (or a later publish_form call) — never auto-published.
+  async function buildForm(input: { title: string; description?: string; questions?: BuildQuestion[] }) {
     const res = await api.createForm({ title: input.title || "Untitled form", description: input.description });
     if (!res.ok || !res.formId) return { ok: false, error: "Could not create form" };
     const id = res.formId;
@@ -49,23 +50,12 @@ export default function Home() {
       const r = await api.addQuestion(id, q as Record<string, unknown>);
       if (r.ok) added++;
     }
-    if (!added) {
-      router.push(`/edit/${id}?built=1`);
-      return { ok: true, formId: id, editUrl: `/edit/${id}`, added, next: "No questions added — use add_question on the builder." };
-    }
-    // Form is fully built — go straight to the publish confirm gate rather than making the
-    // agent come back with a second publish_form call.
-    const confirmed = await confirmGate(client, `Publish "${input.title}" with ${added} question(s)?`);
-    if (!confirmed) {
-      router.push(`/edit/${id}?built=1`);
-      return { ok: true, formId: id, editUrl: `/edit/${id}`, added, published: false, next: "Form built but not published (cancelled). Call publish_form on the builder when ready." };
-    }
-    const pub = await api.publishForm(id);
     router.push(`/edit/${id}?built=1`);
     return {
       ok: true, formId: id, editUrl: `/edit/${id}`, added,
-      published: pub.ok, shareUrl: pub.shareUrl,
-      next: pub.ok ? "Form built and published." : "Form built but publish failed — call publish_form on the builder.",
+      next: added
+        ? "Form built (draft). Review it, then call publish_form on the builder to share."
+        : "No questions added — use add_question on the builder.",
     };
   }
 
@@ -99,8 +89,8 @@ export default function Home() {
         },
         required: ["title", "questions"],
       },
-      execute: async (input, client) =>
-        buildForm(input as { title: string; description?: string; questions?: BuildQuestion[] }, client),
+      execute: async (input) =>
+        buildForm(input as { title: string; description?: string; questions?: BuildQuestion[] }),
     },
     {
       name: "create_form",

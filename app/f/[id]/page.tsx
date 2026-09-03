@@ -144,8 +144,8 @@ export default function FillPage({ params }: { params: Promise<{ id: string }> }
       name: "fill_form",
       description:
         "Fill many answers at once (and optionally the respondent's name). answers = [{questionId, value}]. " +
-        "If this completes every required field, immediately confirms with the user and submits — no separate submit_response call needed. " +
-        "Returns per-field accept/reject plus submitted (true/false) and why.",
+        "This only fills the fields — it never submits. When every required field is filled, call submit_response to submit. " +
+        "Returns per-field accept/reject plus whether the form is now valid and what's still missing.",
       inputSchema: {
         type: "object",
         properties: {
@@ -154,7 +154,7 @@ export default function FillPage({ params }: { params: Promise<{ id: string }> }
         },
         required: ["answers"],
       },
-      execute: async (input, client) => {
+      execute: async (input) => {
         const f = formRef.current;
         if (!f) return { ok: false, error: { code: "not_loaded", message: "form not loaded" } };
         const nextName = input.name !== undefined ? String(input.name) : nameRef.current;
@@ -168,13 +168,10 @@ export default function FillPage({ params }: { params: Promise<{ id: string }> }
           return { questionId: a.questionId, accepted: true };
         });
         const v = validation(f, nextAnswers, nextName);
-        if (!v.valid) return { ok: true, results, submitted: false, next: "Not all required fields are filled yet." };
-        const confirmed = await confirmGate(client, `Submit your response to "${f.title}"?`);
-        if (!confirmed) return { ok: true, results, submitted: false, next: "Submission cancelled by user." };
-        const res = await doSubmit(nextAnswers, nextName);
-        return res.ok
-          ? { ok: true, results, submitted: true }
-          : { ok: false, results, submitted: false, error: res.error };
+        return {
+          ok: true, results, submitted: false, valid: v.valid, missing: v.missing,
+          next: v.valid ? "All required fields filled — call submit_response to submit." : "Not all required fields are filled yet.",
+        };
       },
     },
     {
