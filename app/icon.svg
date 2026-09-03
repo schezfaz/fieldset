@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <clipPath id="fieldset-clip">
+      <rect x="2" y="2" width="28" height="28" rx="7" />
+    </clipPath>
+  </defs>
+  <rect x="2" y="2" width="28" height="28" rx="7" fill="#F1E8CE" />
+  <g clip-path="url(#fieldset-clip)" stroke="#4E8DA3" stroke-width="2.4">
+    <line x1="-4" y1="26" x2="26" y2="-4" />
+    <line x1="4" y1="34" x2="34" y2="4" />
+    <line x1="-12" y1="18" x2="18" y2="-12" />
+    <line x1="12" y1="42" x2="42" y2="12" />
+  </g>
+  <rect x="2" y="2" width="28" height="28" rx="7" stroke="#4E8DA3" stroke-width="2.4" />
+</svg>

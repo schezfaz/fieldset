@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { elementByKind } from "@/lib/elements";
 import { AnswerValue, Form } from "@/lib/types";
 import { FieldControl } from "@/components/FieldControl";
+import { BrandMark } from "@/components/BrandMark";
 import { confirmGate, useWebMCP, webmcpAvailable } from "@/lib/webmcp";
 import { getSessionId } from "@/lib/session";
 
@@ -161,7 +162,7 @@ export default function FillPage({ params }: { params: Promise<{ id: string }> }
   return (
     <div className="fill">
       <header className="f-header">
-        <Link href="/" className="brand sm"><span className="brand-mark">▨</span> Fieldset</Link>
+        <Link href="/" className="brand sm"><BrandMark className="brand-mark" /> Fieldset</Link>
         <span className="side-note tiny" style={{ margin: 0 }}>
           <span className={`dot ${mcp ? "on" : ""}`} />
           {mcp ? "agent can fill this" : "manual"}

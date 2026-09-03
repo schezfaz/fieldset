@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { elementByKind, KIND_ENUM } from "@/lib/elements";
 import { AnswerValue, Form, InterviewTurn, QuestionKind } from "@/lib/types";
 import { FieldControl } from "@/components/FieldControl";
+import { BrandMark } from "@/components/BrandMark";
 import { confirmGate, useWebMCP, webmcpAvailable } from "@/lib/webmcp";
 import { getSessionId } from "@/lib/session";
 
@@ -192,7 +193,7 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
   return (
     <div className="fill interview">
       <header className="f-header">
-        <Link href="/" className="brand sm"><span className="brand-mark">▨</span> Fieldset</Link>
+        <Link href="/" className="brand sm"><BrandMark className="brand-mark" /> Fieldset</Link>
         <div className="b-header-right">
           <Link href={`/f/${id}`} className="btn btn-ghost">Regular fill page →</Link>
           <span className="side-note tiny" style={{ margin: 0 }}>

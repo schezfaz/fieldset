@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { KIND_ENUM } from "@/lib/elements";
 import { useWebMCP, webmcpAvailable } from "@/lib/webmcp";
+import { BrandMark } from "@/components/BrandMark";
 
 type BuildQuestion = {
   kind: string; label: string; required?: boolean; options?: string[]; min?: number; max?: number; step?: number;
@@ -99,7 +100,7 @@ export default function Home() {
     <main className="home">
       <div className="home-inner">
         <div className="brand">
-          <span className="brand-mark">▨</span> Fieldset
+          <BrandMark className="brand-mark" /> Fieldset
         </div>
 
         <p className="eyebrow">Agent-native forms</p>

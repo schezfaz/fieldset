@@ -229,7 +229,7 @@ input.input.agent-touched, textarea.textarea.agent-touched, select.select.agent-
 /* --- brand ----------------------------------------------------------------- */
 .brand { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 700; font-size: 20px; color: var(--ink); text-decoration: none; letter-spacing: -0.02em; }
 .brand.sm { font-size: 17px; }
-.brand-mark { color: var(--hl-deep); font-size: 0.9em; }
+.brand-mark { color: var(--hl-deep); font-size: 0.9em; flex-shrink: 0; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--faint); margin-right: 6px; vertical-align: middle; }
 .dot.on { background: var(--hl-deep); box-shadow: 0 0 0 3px var(--hl-wash); }
 /* "build" / "fill" render exactly like an agent-authored value — belly-blue + italic */
@@ -239,7 +239,8 @@ input.input.agent-touched, textarea.textarea.agent-touched, select.select.agent-
 /* --- home ------------------------------------------------------------------ */
 .home { min-height: 100dvh; display: grid; place-items: center; padding: 40px 20px; }
 .home-inner { width: 100%; max-width: 620px; }
-.home-h1 { font-size: clamp(38px, 6vw, 62px); margin: 8px 0 18px; }
+.home-inner .brand { font-size: 38px; gap: 10px; }
+.home-h1 { font-size: clamp(28px, 4.5vw, 46px); margin: 8px 0 18px; }
 .home-sub { font-size: 17px; color: var(--ink-soft); margin-bottom: 30px; text-align: justify; text-justify: inter-word; }
 .home-card { padding: 22px; }
 .field-label { display: block; font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }

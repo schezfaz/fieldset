@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { KIND_ENUM, elementByKind, elementsByGroup } from "@/lib/elements";
 import { Form, Question, QuestionKind } from "@/lib/types";
 import { FieldControl } from "@/components/FieldControl";
+import { BrandMark } from "@/components/BrandMark";
 import { confirmGate, useWebMCP, webmcpAvailable } from "@/lib/webmcp";
 
 export default function BuilderPage({ params }: { params: Promise<{ id: string }> }) {
@@ -200,7 +201,7 @@ export default function BuilderPage({ params }: { params: Promise<{ id: string }
   return (
     <div className="builder">
       <header className="b-header">
-        <Link href="/" className="brand sm"><span className="brand-mark">▨</span> Fieldset</Link>
+        <Link href="/" className="brand sm"><BrandMark className="brand-mark" /> Fieldset</Link>
         <div className="b-header-right">
           <span className={`status-pill ${form.status}`}>{form.status}</span>
           {form.status === "published" && form.shareUrl && (

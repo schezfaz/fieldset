@@ -7,6 +7,7 @@ import { elementByKind } from "@/lib/elements";
 import { Aggregate, QuestionSummary } from "@/lib/aggregate";
 import { Form, FormResponse, Insight } from "@/lib/types";
 import { useWebMCP, webmcpAvailable } from "@/lib/webmcp";
+import { BrandMark } from "@/components/BrandMark";
 
 export default function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -99,7 +100,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   return (
     <div className="fill">
       <header className="f-header">
-        <Link href="/" className="brand sm"><span className="brand-mark">▨</span> Fieldset</Link>
+        <Link href="/" className="brand sm"><BrandMark className="brand-mark" /> Fieldset</Link>
         <div className="b-header-right">
           <Link href={`/edit/${id}`} className="btn btn-ghost">Edit form</Link>
           {form.status === "published" && <Link href={`/f/${id}`} className="btn btn-ghost" target="_blank">Fill page ↗</Link>}
