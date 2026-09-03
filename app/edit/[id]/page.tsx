@@ -8,6 +8,7 @@ import { Form, Question, QuestionKind } from "@/lib/types";
 import { FieldControl } from "@/components/FieldControl";
 import { BrandMark } from "@/components/BrandMark";
 import { confirmGate, useWebMCP, webmcpAvailable } from "@/lib/webmcp";
+import { requestAlert, requestConfirm } from "@/components/ConfirmModal";
 
 export default function BuilderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -185,13 +186,13 @@ export default function BuilderPage({ params }: { params: Promise<{ id: string }
     if (res.ok && res.form) setForm(res.form);
   }
   async function publish() {
-    if (!confirm(`Publish "${form?.title}"?`)) return;
+    if (!(await requestConfirm(`Publish "${form?.title}"?`))) return;
     const res = await api.publishForm(id);
     if (res.ok) {
       refresh();
       if (res.shareUrl) setPublished({ title: form?.title ?? "", url: res.shareUrl });
     } else {
-      alert("Add at least one question first.");
+      requestAlert("Add at least one question first.");
     }
   }
 
@@ -297,6 +298,7 @@ export default function BuilderPage({ params }: { params: Promise<{ id: string }
 
 function PublishModal({ title, url, onClose }: { title: string; url: string; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
+  const [igCopied, setIgCopied] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -317,8 +319,16 @@ function PublishModal({ title, url, onClose }: { title: string; url: string; onC
     try { await navigator.share({ title, url }); } catch { /* user cancelled */ }
   }
 
+  // Instagram has no web share-intent URL that accepts a link, so the best-effort flow is:
+  // copy the link, then hand off to instagram.com so the user can paste it into a DM/bio/story.
+  async function shareToInstagram() {
+    try { await navigator.clipboard.writeText(url); setIgCopied(true); setTimeout(() => setIgCopied(false), 2000); } catch { /* clipboard unavailable */ }
+    window.open("https://www.instagram.com/", "_blank", "noopener,noreferrer");
+  }
+
   const shareText = encodeURIComponent(`Fill out "${title}"`);
   const encodedUrl = encodeURIComponent(url);
+  const waText = encodeURIComponent(`Fill out "${title}" ${url}`);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -341,7 +351,23 @@ function PublishModal({ title, url, onClose }: { title: string; url: string; onC
 
         <div className="modal-share-row">
           {canShare && <button className="btn btn-ghost" onClick={nativeShare}>Share…</button>}
-          <a className="btn btn-ghost" href={`mailto:?subject=${shareText}&body=${encodedUrl}`}>Email</a>
+          <a
+            className="btn btn-ghost"
+            href={`https://wa.me/?text=${waText}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            WhatsApp
+          </a>
+          <button className="btn btn-ghost" onClick={shareToInstagram}>{igCopied ? "Link copied ✓" : "Instagram"}</button>
+          <a
+            className="btn btn-ghost"
+            href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Facebook
+          </a>
           <a
             className="btn btn-ghost"
             href={`https://twitter.com/intent/tweet?text=${shareText}&url=${encodedUrl}`}
@@ -350,6 +376,7 @@ function PublishModal({ title, url, onClose }: { title: string; url: string; onC
           >
             Share on X
           </a>
+          <a className="btn btn-ghost" href={`mailto:?subject=${shareText}&body=${encodedUrl}`}>Email</a>
           <a href={url} className="btn btn-ghost" target="_blank" rel="noopener noreferrer">Open fill page ↗</a>
         </div>
       </div>

@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { KIND_ENUM } from "@/lib/elements";
-import { useWebMCP, webmcpAvailable } from "@/lib/webmcp";
+import { confirmGate, useWebMCP, webmcpAvailable } from "@/lib/webmcp";
 import { BrandMark } from "@/components/BrandMark";
+import { SITE_SAMPLES, type Sample } from "@/lib/samples";
 
 type BuildQuestion = {
   kind: string; label: string; required?: boolean; options?: string[]; min?: number; max?: number; step?: number;
@@ -15,6 +16,7 @@ export default function Home() {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [mcp, setMcp] = useState(false);
+  const [seeding, setSeeding] = useState<string | null>(null);
 
   useEffect(() => setMcp(webmcpAvailable()), []);
 
@@ -24,9 +26,21 @@ export default function Home() {
     return res;
   }
 
+  // Spin up one of the ready-made examples: create the form, add every question, publish it,
+  // then open its fill page — so it's ready for a human or their agent to fill immediately.
+  async function useSample(s: Sample) {
+    if (seeding) return;
+    setSeeding(s.slug);
+    const res = await api.createForm({ title: s.title, description: s.description });
+    if (!res.ok || !res.formId) { setSeeding(null); return; }
+    for (const q of s.questions) await api.addQuestion(res.formId, q as unknown as Record<string, unknown>);
+    await api.publishForm(res.formId);
+    router.push(`/f/${res.formId}`);
+  }
+
   // One-shot: create the form AND add every question in a single tool call, then open the
   // builder. Avoids the home→builder tool-rediscovery handoff — the agent does it all here.
-  async function buildForm(input: { title: string; description?: string; questions?: BuildQuestion[] }) {
+  async function buildForm(input: { title: string; description?: string; questions?: BuildQuestion[] }, client?: unknown) {
     const res = await api.createForm({ title: input.title || "Untitled form", description: input.description });
     if (!res.ok || !res.formId) return { ok: false, error: "Could not create form" };
     const id = res.formId;
@@ -35,10 +49,23 @@ export default function Home() {
       const r = await api.addQuestion(id, q as Record<string, unknown>);
       if (r.ok) added++;
     }
+    if (!added) {
+      router.push(`/edit/${id}?built=1`);
+      return { ok: true, formId: id, editUrl: `/edit/${id}`, added, next: "No questions added — use add_question on the builder." };
+    }
+    // Form is fully built — go straight to the publish confirm gate rather than making the
+    // agent come back with a second publish_form call.
+    const confirmed = await confirmGate(client, `Publish "${input.title}" with ${added} question(s)?`);
+    if (!confirmed) {
+      router.push(`/edit/${id}?built=1`);
+      return { ok: true, formId: id, editUrl: `/edit/${id}`, added, published: false, next: "Form built but not published (cancelled). Call publish_form on the builder when ready." };
+    }
+    const pub = await api.publishForm(id);
     router.push(`/edit/${id}?built=1`);
     return {
       ok: true, formId: id, editUrl: `/edit/${id}`, added,
-      next: added ? "Form built. Review it and call publish_form on the builder to share." : "No questions added — use add_question on the builder.",
+      published: pub.ok, shareUrl: pub.shareUrl,
+      next: pub.ok ? "Form built and published." : "Form built but publish failed — call publish_form on the builder.",
     };
   }
 
@@ -72,8 +99,8 @@ export default function Home() {
         },
         required: ["title", "questions"],
       },
-      execute: async (input) =>
-        buildForm(input as { title: string; description?: string; questions?: BuildQuestion[] }),
+      execute: async (input, client) =>
+        buildForm(input as { title: string; description?: string; questions?: BuildQuestion[] }, client),
     },
     {
       name: "create_form",
@@ -126,6 +153,27 @@ export default function Home() {
           <button className="btn btn-primary home-cta" style={{ marginTop: 16 }} onClick={() => create(title)}>
             Create form →
           </button>
+        </div>
+
+        <div className="home-samples">
+          <p className="home-samples-label">Or try a ready-made form — fill it yourself, or hand it to your agent</p>
+          <div className="home-samples-grid">
+            {SITE_SAMPLES.map((s) => (
+              <button
+                key={s.slug}
+                className="sample-card"
+                onClick={() => useSample(s)}
+                disabled={!!seeding}
+              >
+                <span className="sample-glyph" aria-hidden>{s.glyph}</span>
+                <span className="sample-title">{s.title}</span>
+                <span className="sample-desc">{s.description}</span>
+                <span className="sample-cta">
+                  {seeding === s.slug ? "Opening…" : `${s.questions.length} questions · Fill →`}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
         <p className="mcp-status">

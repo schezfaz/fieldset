@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { requestConfirm } from "@/components/ConfirmModal";
 
 // A WebMCP tool definition. Verified against Chrome 152: the working registration call is
 // navigator.modelContext.registerTool(tool), one at a time (see ../../tools.md).
@@ -95,13 +96,14 @@ export function useWebMCP(buildTools: () => ToolDef[]) {
 }
 
 // Confirmation gate for mutating tools. Tries the spec'd requestUserInteraction, falls back
-// to window.confirm. Returns true if the user approved.
+// to the themed in-app confirm modal (ConfirmModalHost, mounted in the root layout) — never
+// the native browser confirm(), which can't be styled to match the rest of the app.
 export async function confirmGate(client: unknown, message: string): Promise<boolean> {
   const c = client as { requestUserInteraction?: (cb: () => Promise<boolean>) => Promise<boolean> } | undefined;
   try {
     if (c && typeof c.requestUserInteraction === "function") {
-      return await c.requestUserInteraction(async () => window.confirm(message));
+      return await c.requestUserInteraction(async () => requestConfirm(message));
     }
   } catch { /* fall through */ }
-  return typeof window !== "undefined" ? window.confirm(message) : true;
+  return typeof window !== "undefined" ? requestConfirm(message) : true;
 }

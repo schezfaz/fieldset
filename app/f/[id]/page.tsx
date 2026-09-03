@@ -4,14 +4,29 @@ import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { elementByKind } from "@/lib/elements";
-import { AnswerValue, Form } from "@/lib/types";
+import { AnswerValue, Form, Question } from "@/lib/types";
 import { FieldControl } from "@/components/FieldControl";
 import { BrandMark } from "@/components/BrandMark";
 import { confirmGate, useWebMCP, webmcpAvailable } from "@/lib/webmcp";
+import { requestAlert } from "@/components/ConfirmModal";
 import { getSessionId } from "@/lib/session";
 import { invalidReason } from "@/lib/validate";
 
 type Answers = Record<string, AnswerValue>;
+
+// The question that controls a dependent question's options (matched by `key`), if any.
+function controllingQuestion(q: Question, questions: Question[]): Question | undefined {
+  return q.dependsOnKey ? questions.find((x) => x.key === q.dependsOnKey) : undefined;
+}
+
+// A dependent question's options come from optionsMap[controllingAnswer]; every other
+// question just uses its own options.
+function resolveOptions(q: Question, questions: Question[], answers: Answers): string[] {
+  if (!q.dependsOnKey) return q.options ?? [];
+  const ctrl = controllingQuestion(q, questions);
+  const key = ctrl && typeof answers[ctrl.questionId] === "string" ? (answers[ctrl.questionId] as string) : "";
+  return (key && q.optionsMap?.[key]) || [];
+}
 
 export default function FillPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -47,7 +62,28 @@ export default function FillPage({ params }: { params: Promise<{ id: string }> }
     });
   };
 
-  function validation(f: Form, a: Answers) {
+  // When a dependent question's controlling answer changes (e.g. cuisine → mains), drop any
+  // previously-picked options that no longer belong to the new set.
+  useEffect(() => {
+    if (!form) return;
+    let changed = false;
+    const next = { ...answers };
+    for (const q of form.questions) {
+      if (!q.dependsOnKey) continue;
+      const allowed = resolveOptions(q, form.questions, answers);
+      const cur = answers[q.questionId];
+      if (Array.isArray(cur)) {
+        const kept = cur.filter((x) => allowed.includes(x));
+        if (kept.length !== cur.length) { next[q.questionId] = kept; changed = true; }
+      } else if (typeof cur === "string" && cur && !allowed.includes(cur)) {
+        next[q.questionId] = ""; changed = true;
+      }
+    }
+    if (changed) setAnswers(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answers, form]);
+
+  function validation(f: Form, a: Answers, nm: string = nameRef.current) {
     const missing: string[] = [];
     const invalid: { questionId: string; reason: string }[] = [];
     for (const q of f.questions) {
@@ -58,15 +94,19 @@ export default function FillPage({ params }: { params: Promise<{ id: string }> }
       const reason = invalidReason(q, v);
       if (reason) invalid.push({ questionId: q.questionId, reason });
     }
-    if (f.settings.collectName && !nameRef.current.trim()) missing.push("name");
+    if (f.settings.collectName && !nm.trim()) missing.push("name");
     return { valid: missing.length === 0 && invalid.length === 0, missing, invalid };
   }
 
-  async function doSubmit(): Promise<{ ok: boolean; error?: string }> {
+  // Accepts explicit answers/name so a just-computed batch (not yet reflected in the
+  // answers/name refs, which only update on the next render) can be submitted immediately.
+  async function doSubmit(overrideAnswers?: Answers, overrideName?: string): Promise<{ ok: boolean; error?: string }> {
     const f = formRef.current;
     if (!f) return { ok: false, error: "not loaded" };
-    const answerList = Object.entries(answersRef.current).map(([questionId, value]) => ({ questionId, value }));
-    const res = await api.submitResponse(id, { name: nameRef.current || undefined, answers: answerList, sessionId: getSessionId() });
+    const a = overrideAnswers ?? answersRef.current;
+    const nm = overrideName ?? nameRef.current;
+    const answerList = Object.entries(a).map(([questionId, value]) => ({ questionId, value }));
+    const res = await api.submitResponse(id, { name: nm || undefined, answers: answerList, sessionId: getSessionId() });
     if (res.ok) { setState("done"); return { ok: true }; }
     return { ok: false, error: res.error?.message ?? "submit failed" };
   }
@@ -102,7 +142,10 @@ export default function FillPage({ params }: { params: Promise<{ id: string }> }
     },
     {
       name: "fill_form",
-      description: "Fill many answers at once (and optionally the respondent's name). answers = [{questionId, value}]. Returns per-field accept/reject.",
+      description:
+        "Fill many answers at once (and optionally the respondent's name). answers = [{questionId, value}]. " +
+        "If this completes every required field, immediately confirms with the user and submits — no separate submit_response call needed. " +
+        "Returns per-field accept/reject plus submitted (true/false) and why.",
       inputSchema: {
         type: "object",
         properties: {
@@ -111,16 +154,27 @@ export default function FillPage({ params }: { params: Promise<{ id: string }> }
         },
         required: ["answers"],
       },
-      execute: async (input) => {
+      execute: async (input, client) => {
         const f = formRef.current;
-        if (input.name) setName(String(input.name));
+        if (!f) return { ok: false, error: { code: "not_loaded", message: "form not loaded" } };
+        const nextName = input.name !== undefined ? String(input.name) : nameRef.current;
+        if (input.name !== undefined) setName(nextName);
+        const nextAnswers: Answers = { ...answersRef.current };
         const results = ((input.answers as { questionId: string; value: AnswerValue }[]) ?? []).map((a) => {
-          const q = f?.questions.find((x) => x.questionId === a.questionId);
+          const q = f.questions.find((x) => x.questionId === a.questionId);
           if (!q) return { questionId: a.questionId, accepted: false };
-          setAnswer(q.questionId, a.value, true);
+          nextAnswers[a.questionId] = a.value;
+          setAnswer(a.questionId, a.value, true);
           return { questionId: a.questionId, accepted: true };
         });
-        return { ok: true, results };
+        const v = validation(f, nextAnswers, nextName);
+        if (!v.valid) return { ok: true, results, submitted: false, next: "Not all required fields are filled yet." };
+        const confirmed = await confirmGate(client, `Submit your response to "${f.title}"?`);
+        if (!confirmed) return { ok: true, results, submitted: false, next: "Submission cancelled by user." };
+        const res = await doSubmit(nextAnswers, nextName);
+        return res.ok
+          ? { ok: true, results, submitted: true }
+          : { ok: false, results, submitted: false, error: res.error };
       },
     },
     {
@@ -210,6 +264,11 @@ export default function FillPage({ params }: { params: Promise<{ id: string }> }
             </div>;
           }
           const badReason = v.invalid.find((x) => x.questionId === q.questionId)?.reason;
+          // Dependent questions (e.g. mains-by-cuisine) resolve their options from the
+          // controlling answer; render the same control, just with the resolved options.
+          const eq = q.dependsOnKey ? { ...q, options: resolveOptions(q, form.questions, answers) } : q;
+          const awaitingDep = !!q.dependsOnKey && (eq.options?.length ?? 0) === 0;
+          const ctrlLabel = q.dependsOnKey ? controllingQuestion(q, form.questions)?.label : undefined;
           return (
             <div key={q.questionId} className="q-block">
               <label className="q-ask">
@@ -217,14 +276,18 @@ export default function FillPage({ params }: { params: Promise<{ id: string }> }
                 {agentIds.has(q.questionId) && <span className="agent-chip">✎ agent</span>}
                 <span className="q-kind-tag mono">{def?.label}</span>
               </label>
-              <FieldControl q={q} value={answers[q.questionId]} onChange={(val) => setAnswer(q.questionId, val, false)} agentTouched={agentIds.has(q.questionId)} />
+              {awaitingDep ? (
+                <p className="muted tiny">{ctrlLabel ? `Choose “${ctrlLabel}” first to see options.` : "Make the earlier choice first to see options."}</p>
+              ) : (
+                <FieldControl q={eq} value={answers[q.questionId]} onChange={(val) => setAnswer(q.questionId, val, false)} agentTouched={agentIds.has(q.questionId)} />
+              )}
               {badReason && <p className="field-error">{badReason}</p>}
             </div>
           );
         })}
 
         <div className="f-submit">
-          <button className="btn btn-hl" disabled={!v.valid} onClick={async () => { const r = await doSubmit(); if (!r.ok) alert(r.error); }}>
+          <button className="btn btn-hl" disabled={!v.valid} onClick={async () => { const r = await doSubmit(); if (!r.ok) requestAlert(String(r.error)); }}>
             Submit response
           </button>
           {!v.valid && (

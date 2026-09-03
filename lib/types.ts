@@ -22,6 +22,12 @@ export interface Question {
   min?: number;         // number | rating | slider | opinion_scale | nps | currency
   max?: number;
   step?: number;        // slider
+  // Dependent options: this question's choices change based on another question's answer.
+  // `key` is a stable id for seeded forms; a question with `dependsOnKey` looks up the
+  // controlling question by that key and uses `optionsMap[controllingAnswer]` as its options.
+  key?: string;
+  dependsOnKey?: string;
+  optionsMap?: Record<string, string[]>;
 }
 
 export interface FormSettings {

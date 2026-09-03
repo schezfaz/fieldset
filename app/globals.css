@@ -250,6 +250,23 @@ input.input.agent-touched, textarea.textarea.agent-touched, select.select.agent-
 .home-cta { width: 100%; justify-content: center; margin-top: 22px; font-size: 15px; padding: 12px; }
 .mcp-status { margin-top: 20px; font-size: 13px; color: var(--muted); }
 
+/* Ready-made example forms on the home page */
+.home-samples { margin-top: 30px; }
+.home-samples-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+.home-samples-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+@media (max-width: 560px) { .home-samples-grid { grid-template-columns: 1fr; } }
+.sample-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left;
+  padding: 14px 16px; background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); cursor: pointer; transition: border-color .12s, transform .12s;
+}
+.sample-card:hover:not(:disabled) { border-color: var(--ink); transform: translateY(-1px); }
+.sample-card:disabled { opacity: .55; cursor: default; }
+.sample-glyph { font-size: 22px; line-height: 1; margin-bottom: 4px; }
+.sample-title { font-weight: 700; color: var(--ink); font-size: 15px; }
+.sample-desc { font-size: 13px; color: var(--ink-soft); line-height: 1.35; }
+.sample-cta { margin-top: 6px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .04em; color: var(--hl-deep); }
+
 /* --- builder --------------------------------------------------------------- */
 .builder { min-height: 100dvh; }
 .b-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; row-gap: 10px; padding: 14px 64px 14px 22px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: color-mix(in srgb, var(--paper) 86%, transparent); backdrop-filter: blur(8px); z-index: 10; }
@@ -387,6 +404,12 @@ input.input.agent-touched, textarea.textarea.agent-touched, select.select.agent-
 .modal-link-row { display: flex; gap: 8px; margin-bottom: 14px; }
 .modal-link-input { text-align: left; font-size: 13px; color: var(--ink-soft); }
 .modal-share-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+
+/* --- confirm / alert modal (themed replacement for window.confirm/alert) ---------------- */
+.confirm-card { padding-top: 28px; }
+.confirm-message { font-size: 16px; font-weight: 600; line-height: 1.45; margin-bottom: 0; }
+.confirm-actions { margin-top: 22px; }
+.confirm-actions .btn { min-width: 84px; }
 
 @media (max-width: 480px) {
   .modal-link-row { flex-direction: column; }

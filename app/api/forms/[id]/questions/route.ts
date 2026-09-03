@@ -19,6 +19,9 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     min: typeof b.min === "number" ? b.min : undefined,
     max: typeof b.max === "number" ? b.max : undefined,
     step: typeof b.step === "number" ? b.step : undefined,
+    key: typeof b.key === "string" ? b.key : undefined,
+    dependsOnKey: typeof b.dependsOnKey === "string" ? b.dependsOnKey : undefined,
+    optionsMap: b.optionsMap && typeof b.optionsMap === "object" && !Array.isArray(b.optionsMap) ? b.optionsMap : undefined,
   });
   if (!q) return NextResponse.json({ ok: false, error: { code: "not_found", message: "No such form" } }, { status: 404 });
   return NextResponse.json({ ok: true, questionId: q.questionId, form: await getForm(id) });

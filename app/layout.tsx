@@ -3,6 +3,7 @@ import { Fredoka, Nunito, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
+import { ConfirmModalHost } from "@/components/ConfirmModal";
 
 // Rounded, plush, sleepy — Snorlax.
 const fredoka = Fredoka({ subsets: ["latin"], variable: "--font-display", weight: ["400", "500", "600", "700"] });
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <Footer />
         </div>
+        <ConfirmModalHost />
       </body>
     </html>
   );
