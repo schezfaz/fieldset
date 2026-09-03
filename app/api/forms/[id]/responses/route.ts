@@ -5,13 +5,13 @@ type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_req: NextRequest, { params }: Ctx) {
   const { id } = await params;
-  const responses = listResponses(id);
+  const responses = await listResponses(id);
   return NextResponse.json({ ok: true, responses, count: responses.length });
 }
 
 export async function POST(req: NextRequest, { params }: Ctx) {
   const { id } = await params;
-  const form = getForm(id);
+  const form = await getForm(id);
   if (!form) return NextResponse.json({ ok: false, error: { code: "not_found", message: "No such form" } }, { status: 404 });
   if (form.status !== "published") {
     return NextResponse.json({ ok: false, error: { code: "not_open", message: "This form is not accepting responses" } }, { status: 400 });
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   const b = await req.json().catch(() => ({}));
   const sessionId = typeof b.sessionId === "string" ? b.sessionId : undefined;
 
-  if (form.settings.oneResponsePerPerson && sessionId && hasSessionResponded(id, sessionId)) {
+  if (form.settings.oneResponsePerPerson && sessionId && (await hasSessionResponded(id, sessionId))) {
     return NextResponse.json({ ok: false, error: { code: "already_submitted", message: "You've already responded to this form" } }, { status: 409 });
   }
 
@@ -32,6 +32,6 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ ok: false, error: { code: "missing_required", message: `Missing required: ${missing.join(", ")}` } }, { status: 400 });
   }
 
-  const response = addResponse(id, { name: b.name, answers, sessionId });
+  const response = await addResponse(id, { name: b.name, answers, sessionId });
   return NextResponse.json({ ok: true, responseId: response!.responseId });
 }

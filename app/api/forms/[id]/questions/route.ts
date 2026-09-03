@@ -10,7 +10,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   if (!KIND_ENUM.includes(b.kind)) {
     return NextResponse.json({ ok: false, error: { code: "bad_kind", message: `kind must be one of ${KIND_ENUM.join(", ")}` } }, { status: 400 });
   }
-  const q = addQuestion(id, {
+  const q = await addQuestion(id, {
     kind: b.kind,
     label: typeof b.label === "string" ? b.label : "Untitled question",
     required: !!b.required,
@@ -21,21 +21,21 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     price: typeof b.price === "number" ? b.price : undefined,
   });
   if (!q) return NextResponse.json({ ok: false, error: { code: "not_found", message: "No such form" } }, { status: 404 });
-  return NextResponse.json({ ok: true, questionId: q.questionId, form: getForm(id) });
+  return NextResponse.json({ ok: true, questionId: q.questionId, form: await getForm(id) });
 }
 
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   const { id } = await params;
   const { questionId, patch } = await req.json().catch(() => ({}));
-  const q = updateQuestion(id, questionId, patch ?? {});
+  const q = await updateQuestion(id, questionId, patch ?? {});
   if (!q) return NextResponse.json({ ok: false, error: { code: "not_found", message: "No such question" } }, { status: 404 });
-  return NextResponse.json({ ok: true, form: getForm(id) });
+  return NextResponse.json({ ok: true, form: await getForm(id) });
 }
 
 export async function DELETE(req: NextRequest, { params }: Ctx) {
   const { id } = await params;
   const { questionId } = await req.json().catch(() => ({}));
-  const ok = removeQuestion(id, questionId);
+  const ok = await removeQuestion(id, questionId);
   if (!ok) return NextResponse.json({ ok: false, error: { code: "not_found", message: "No such question" } }, { status: 404 });
-  return NextResponse.json({ ok: true, form: getForm(id) });
+  return NextResponse.json({ ok: true, form: await getForm(id) });
 }

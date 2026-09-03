@@ -7,17 +7,9 @@ import { elementByKind } from "@/lib/elements";
 import { AnswerValue, Form } from "@/lib/types";
 import { FieldControl } from "@/components/FieldControl";
 import { confirmGate, useWebMCP, webmcpAvailable } from "@/lib/webmcp";
+import { getSessionId } from "@/lib/session";
 
 type Answers = Record<string, AnswerValue>;
-
-function sessionId(): string {
-  if (typeof window === "undefined") return "";
-  try {
-    let s = localStorage.getItem("fieldset_sid");
-    if (!s) { s = crypto.randomUUID(); localStorage.setItem("fieldset_sid", s); }
-    return s;
-  } catch { return "anon"; }
-}
 
 export default function FillPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -66,7 +58,7 @@ export default function FillPage({ params }: { params: Promise<{ id: string }> }
     const f = formRef.current;
     if (!f) return { ok: false, error: "not loaded" };
     const answerList = Object.entries(answersRef.current).map(([questionId, value]) => ({ questionId, value }));
-    const res = await api.submitResponse(id, { name: nameRef.current || undefined, answers: answerList, sessionId: sessionId() });
+    const res = await api.submitResponse(id, { name: nameRef.current || undefined, answers: answerList, sessionId: getSessionId() });
     if (res.ok) { setState("done"); return { ok: true }; }
     return { ok: false, error: res.error?.message ?? "submit failed" };
   }

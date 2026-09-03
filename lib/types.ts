@@ -56,6 +56,21 @@ export interface FormResponse {
   sessionId?: string;
 }
 
+// One turn of an interview-style fill: a question the agent (or the human, via the
+// manual "ask" control) decided to ask, added live while filling rather than up front.
+// Kept only on the response (not written back onto the form) — see HANDOFF.md §6.
+export interface InterviewTurn {
+  questionId: string;
+  kind: QuestionKind;
+  label: string;
+  required: boolean;
+  options?: string[];
+  min?: number;
+  max?: number;
+  answer?: AnswerValue;
+  askedBy: "agent" | "human";
+}
+
 // A conclusion drawn from the responses and posted onto the results page.
 export interface Insight {
   insightId: string;

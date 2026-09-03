@@ -204,7 +204,10 @@ export default function BuilderPage({ params }: { params: Promise<{ id: string }
         <div className="b-header-right">
           <span className={`status-pill ${form.status}`}>{form.status}</span>
           {form.status === "published" && form.shareUrl && (
-            <Link href={`/f/${id}`} className="btn btn-ghost" target="_blank">Open fill page ↗</Link>
+            <>
+              <Link href={`/f/${id}`} className="btn btn-ghost" target="_blank">Open fill page ↗</Link>
+              <Link href={`/i/${id}`} className="btn btn-ghost" target="_blank">Interview mode ↗</Link>
+            </>
           )}
           <Link href={`/r/${id}`} className="btn btn-ghost">Responses →</Link>
           <button className="btn btn-hl" onClick={publish}>Publish</button>
